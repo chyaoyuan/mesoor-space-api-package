@@ -1,0 +1,11 @@
+aiohttp==3.8.6
+loguru~=0.5.3
+tenacity~=8.0.1
+setuptools~=67.6.1
+pydantic~=2.5.3
+aiohttp-client-cache==0.14.2
+aiofiles==25.1.0
+aiosqlite==0.21.0
+
+
+
