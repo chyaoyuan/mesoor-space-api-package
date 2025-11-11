@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from space_api.model.channel import CreateChannel
 from space_api.model.flow import FlowFromSpace2Task, FlowFromSpace2Project
 from space_api.model.project import CreateProject
@@ -14,11 +16,11 @@ from aiohttp_client_cache.backends.filesystem import FileBackend
 class MesoorSpaceApp:
     def __init__(self, host:str):
         self.host = host
-        self.session = CachedSession(cache=FileBackend(cache_name="space-cache"))
+        self.session = CachedSession(cache=FileBackend(cache_name="space-cache",expire_after=timedelta(minutes=1)))
 
     async def get_session(self):
         if self.session is None:
-            self.session = CachedSession(cache=FileBackend(cache_name="space-cache"))
+            self.session = CachedSession(cache=FileBackend(cache_name="space-cache"),expire_after=timedelta(minutes=1))
         return self.session
 
     async def create_spaces(self, data: dict):
