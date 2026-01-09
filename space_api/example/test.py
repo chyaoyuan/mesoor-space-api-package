@@ -158,7 +158,8 @@ async def run1():
     data = {
         "stageName": "已发起沟通",
         "tenantId":tenantId,
-        "taskPayloadOpenId":"09ec8159-6437-4de6-8cb9-d2fab3083740"
+        "taskPayloadOpenId":"mesoorExtension-ehire.51job.com-317343735",
+        "projectId":"mesoorExtension-ehire.51job.com-170104021"
     }
 
     await mesoor_space.update_task_stage(data)

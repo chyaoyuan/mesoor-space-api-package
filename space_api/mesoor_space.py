@@ -3,6 +3,7 @@ from datetime import timedelta
 from space_api.model.channel import CreateChannel
 from space_api.model.flow import FlowFromSpace2Task, FlowFromSpace2Project
 from space_api.model.project import CreateProject
+from space_api.model.search_task_id_by_projectid_taskpayload_id import SearchTaskIdByProjectIdTaskPayloadId
 from space_api.model.space import CreateSpace
 from loguru import logger
 from aiohttp_client_cache import CachedSession
@@ -163,16 +164,57 @@ class MesoorSpaceApp:
             logger.error(f"创建任务时发生未知错误: {str(e)}")
             raise MesoorSpaceException(f"创建任务时发生未知错误: {str(e)}")
 
+    async def search_task_by_task_payload_id(self,data: dict):
+        data = SearchTaskIdByProjectIdTaskPayloadId(**data)
+        url = f"{self.host}/v2/memory-searches"
+        body = {
+            "entityType": "HydrogenTask",
+            "filters": [
+                {
+                    "op": "Is",
+                    "key": "data.standardFields.taskPayload.openId",
+                    "values": [
+                        data.taskPayloadOpenId
+                    ]
+                }
+                ,{
+                    "op": "Is",
+                    "key": "data.standardFields.project.openId",
+                    "values": [
+                        data.projectId
+                    ]
+                }
+            ],
+            "pageSize": 1,
+            "sort": "meta.updatedAt:desc",
+            "pointer": "/",
+            "select": [
+                "meta.openId"
+            ]
+        }
+        headers = {
+            "tenant-Id": data.tenantId,
+            "user-Id": data.userId
+        }
+        session = await self.get_session()
+        res = await session.post(url, json=body, headers=headers)
+        assert res.status in [200]
+        res = await res.json()
+        if res["total"] > 1:
+            raise MesoorSpaceException("此查询不具有唯一性")
+        task_id = res["data"][0]["meta"]["openId"]
+        return task_id
 
-    async def update_task_stage(self, data: dict):
-        data = UpDateTaskStage(**data)
+    async def update_task_stage(self, _data: dict):
+        data = UpDateTaskStage(**_data)
         assert bool(data.stageId) != bool(data.stageName)
         headers = {
             "tenant-Id": data.tenantId,
             "user-Id": data.userId
         }
+        task_id = await self.search_task_by_task_payload_id(_data)
         body = {
-            "id": data.taskPayloadOpenId,
+            "id": task_id,
         }
         if data.stageId:
             body["stageId"] = data.stageId
@@ -187,7 +229,7 @@ class MesoorSpaceApp:
 
         if res.status in [200, 409]:
             logger.info(f"stage {'create' if res.status == 200 else 'exist'} "
-                        f"success stage->{data.stageId} {data.stageName} taskId->{data.taskPayloadOpenId}->{res.status}")
+                        f"success stage->{data.stageId} {data.stageName} taskId->{task_id}->{res.status}")
             return await res.json() if res.content_type == 'application/json' else await res.text()
         else:
             response_text = await res.text()
