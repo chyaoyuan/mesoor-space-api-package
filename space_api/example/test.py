@@ -130,7 +130,7 @@ from space_api import MesoorSpaceApp
 
 
 async def run():
-    mesoor_space = MesoorSpaceApp("http://localhost:60879")
+    mesoor_space = MesoorSpaceApp("http://localhost:49963")
     index = "0"
     tenantId = "exyc"
     job_name = "包装操作员"
@@ -151,5 +151,16 @@ async def run():
     }
 
     await mesoor_space.flow_from_space_to_task(data)
+async def run1():
+    mesoor_space = MesoorSpaceApp("http://localhost:49963")
+
+    tenantId = "cgltest"
+    data = {
+        "stageName": "已发起沟通",
+        "tenantId":tenantId,
+        "taskPayloadOpenId":"09ec8159-6437-4de6-8cb9-d2fab3083740"
+    }
+
+    await mesoor_space.update_task_stage(data)
 if __name__ == '__main__':
-    asyncio.run(run())
+    asyncio.run(run1())

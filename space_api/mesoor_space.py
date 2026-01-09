@@ -12,6 +12,8 @@ import aiohttp
 import hashlib
 from aiohttp_client_cache.backends.filesystem import FileBackend
 
+from space_api.model.update_task_stage import UpDateTaskStage
+
 
 class MesoorSpaceApp:
     def __init__(self, host:str):
@@ -161,6 +163,41 @@ class MesoorSpaceApp:
             logger.error(f"创建任务时发生未知错误: {str(e)}")
             raise MesoorSpaceException(f"创建任务时发生未知错误: {str(e)}")
 
+
+    async def update_task_stage(self, data: dict):
+        data = UpDateTaskStage(**data)
+        assert bool(data.stageId) != bool(data.stageName)
+        headers = {
+            "tenant-Id": data.tenantId,
+            "user-Id": data.userId
+        }
+        body = {
+            "id": data.taskPayloadOpenId,
+        }
+        if data.stageId:
+            body["stageId"] = data.stageId
+        elif data.stageName:
+            body["stageName"] = data.stageName
+        else:
+            raise MesoorSpaceException(f"stageId or stageName not found->{body}")
+        body = [body]
+        url = f"{self.host}/v3/tasks/stages"
+        session = await self.get_session()
+        res = await session.put(url, json=body, headers=headers)
+
+        if res.status in [200, 409]:
+            logger.info(f"stage {'create' if res.status == 200 else 'exist'} "
+                        f"success stage->{data.stageId} {data.stageName} taskId->{data.taskPayloadOpenId}->{res.status}")
+            return await res.json() if res.content_type == 'application/json' else await res.text()
+        else:
+            response_text = await res.text()
+            logger.error(f"update stage失败: {response_text}")
+            raise MesoorSpaceException(
+                message=f"update stage失败: {response_text}",
+                status_code=res.status,
+                response_data={"error": response_text}
+            )
+
     @staticmethod
     def to_md5(content: str):
         return hashlib.md5(content.encode('utf-8')).hexdigest()
@@ -202,3 +239,4 @@ class MesoorSpaceApp:
         await self.create_channel({**_data,"extraBody":data.channelData})
         await self.create_project({**_data,"extraBody":data.projectData})
         await self.create_task(_data)
+
