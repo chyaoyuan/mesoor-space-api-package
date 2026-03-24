@@ -13,7 +13,7 @@ from space_api.model.task import CreateTask
 from space_api.exceptions import MesoorSpaceException, StageBackwardNotAllowedException
 import aiohttp
 import hashlib
-from aiohttp_client_cache.backends.filesystem import FileBackend
+from aiohttp_client_cache.backends.sqlite import SQLiteBackend
 
 from space_api.model.update_task_stage import UpDateTaskStage
 
@@ -21,11 +21,22 @@ from space_api.model.update_task_stage import UpDateTaskStage
 class MesoorSpaceApp:
     def __init__(self, host:str):
         self.host = host
-        self.session = CachedSession(cache=FileBackend(cache_name="space-cache",expire_after=timedelta(minutes=1)))
+        backend = SQLiteBackend(
+            cache_name="mesoor-space-api-cache",
+            expire_after=timedelta(minutes=1)
+        )
+        self.session = CachedSession(cache=backend)
+        self.backend = backend
 
     async def get_session(self):
         if self.session is None:
-            self.session = CachedSession(cache=FileBackend(cache_name="space-cache"),expire_after=timedelta(minutes=1))
+            backend = SQLiteBackend(
+                cache_name="mesoor-space-api-cache",
+                expire_after=timedelta(minutes=1)
+            )
+            self.session = CachedSession(cache=backend)
+            self.backend = backend
+        await self.backend.delete_expired_responses()
         return self.session
 
     async def create_spaces(self, data: dict):
