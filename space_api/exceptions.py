@@ -39,3 +39,10 @@ class MesoorSpaceException(Exception):
             parts.append(f"Response: {self.response_data}")
             
         return " | ".join(parts)
+
+
+class StageBackwardNotAllowedException(MesoorSpaceException):
+    """Raised when a backward stage transition is attempted."""
+
+    def __init__(self, message: str):
+        super().__init__(message=message)

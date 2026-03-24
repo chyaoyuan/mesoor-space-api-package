@@ -1,14 +1,16 @@
 from datetime import timedelta
 
+import jmespath
+
 from space_api.model.channel import CreateChannel
 from space_api.model.flow import FlowFromSpace2Task, FlowFromSpace2Project
-from space_api.model.project import CreateProject
+from space_api.model.project import CreateProject, GetProjectCircuit
 from space_api.model.search_task_id_by_projectid_taskpayload_id import SearchTaskIdByProjectIdTaskPayloadId
 from space_api.model.space import CreateSpace
 from loguru import logger
 from aiohttp_client_cache import CachedSession
 from space_api.model.task import CreateTask
-from space_api.exceptions import MesoorSpaceException
+from space_api.exceptions import MesoorSpaceException, StageBackwardNotAllowedException
 import aiohttp
 import hashlib
 from aiohttp_client_cache.backends.filesystem import FileBackend
@@ -205,8 +207,62 @@ class MesoorSpaceApp:
         task_id = res["data"][0]["meta"]["openId"]
         return task_id
 
+
+    async def get_project_circuit(self, data: dict):
+        data = GetProjectCircuit(**data)
+        headers = {
+            "tenant-Id": data.tenantId,
+            "user-Id": data.userId
+        }
+        url = f"{self.host}/v3/projects/{data.projectId}/circuits"
+        body = {
+            "projectId": data.projectId,
+        }
+        session = await self.get_session()
+        res = await session.get(url, json=body, headers=headers)
+        assert res.status in [200]
+        res = await res.json()
+        return res["data"]
+
+
     async def update_task_stage(self, _data: dict):
         data = UpDateTaskStage(**_data)
+        # 如果开启流程阶段不允许回退
+        if not data.allowStageBackward:
+            # 获取当前 task_id
+            task_id = await self.search_task_by_task_payload_id(_data)
+
+            # 获取当前 task 详情（用于拿当前 stageId）
+            task_detail_url = f"{self.host}/v3/tasks/{task_id}"
+            session = await self.get_session()
+            task_res = await session.get(task_detail_url, headers={
+                "tenant-Id": data.tenantId,
+                "user-Id": data.userId
+            })
+            assert task_res.status in [200]
+            task_json = await task_res.json()
+            current_stage_id = jmespath.search("data.current.stageId", task_json)
+            assert current_stage_id is not None
+            # 目标 stageId
+            target_stage_id = data.stageId
+
+            # 如果是通过 stageName 更新，需要从 circuit 解析 stageId
+            circuit = await self.get_project_circuit(_data)
+            if not target_stage_id and data.stageName:
+                for stage in circuit.get("stages", []):
+                    if stage.get("name") == data.stageName:
+                        target_stage_id = stage["id"]
+                        break
+            assert target_stage_id is not None
+            if current_stage_id and target_stage_id:
+                if self._is_backward_transition(
+                    circuit=circuit,
+                    current_stage_id=current_stage_id,
+                    target_stage_id=target_stage_id,
+                ):
+                    raise StageBackwardNotAllowedException(
+                        f"Backward transition from {current_stage_id} to {target_stage_id} is not allowed."
+                    )
         assert bool(data.stageId) != bool(data.stageName)
         headers = {
             "tenant-Id": data.tenantId,
@@ -239,6 +295,37 @@ class MesoorSpaceApp:
                 status_code=res.status,
                 response_data={"error": response_text}
             )
+
+    def _is_backward_transition(
+        self,
+        circuit: dict,
+        current_stage_id: str,
+        target_stage_id: str,
+    ) -> bool:
+        """
+        判断是否为回退流转：
+        通过比较阶段的 rank 值来判断，如果目标阶段的 rank 小于当前阶段的 rank，则为回退。
+        """
+        stages = circuit.get("stages", [])
+        
+        # 构建 stage_id -> rank 的映射
+        stage_rank_map = {}
+        for stage in stages:
+            stage_id = stage.get("openId") or stage.get("id")
+            rank = stage.get("rank")
+            if stage_id and rank is not None:
+                stage_rank_map[stage_id] = rank
+        
+        # 获取当前阶段和目标阶段的 rank
+        current_rank = stage_rank_map.get(current_stage_id)
+        target_rank = stage_rank_map.get(target_stage_id)
+        
+        # 如果任一阶段的 rank 不存在，无法判断，默认不是回退
+        if current_rank is None or target_rank is None:
+            return False
+        
+        # 目标 rank < 当前 rank，则为回退
+        return target_rank < current_rank
 
     @staticmethod
     def to_md5(content: str):
@@ -281,4 +368,3 @@ class MesoorSpaceApp:
         await self.create_channel({**_data,"extraBody":data.channelData})
         await self.create_project({**_data,"extraBody":data.projectData})
         await self.create_task(_data)
-

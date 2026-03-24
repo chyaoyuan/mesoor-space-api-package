@@ -10,4 +10,5 @@ class UpDateTaskStage(BaseModel):
     tenantId: str
     userId: Optional[str] = Field(default="mesoor-admin")
     projectId: str
+    allowStageBackward: Optional[bool] = Field(default=True)
 

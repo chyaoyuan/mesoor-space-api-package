@@ -1,0 +1,111 @@
+{
+     "project": {
+          "entityType": "Project",
+          "openId": "mesoorExtension-ehire.51job.com-170104021",
+          "tenantId": null
+     },
+     "name": "制造专员",
+     "type": "normal",
+     "rules": [],
+     "stages": [
+          {
+               "id": "02354c70-170a-486b-8f92-50f699ac97f7",
+               "rank": 0,
+               "name": "待开始",
+               "type": "Edit",
+               "extend": {
+                    "category": "active",
+                    "color": "#C8C8C8"
+               },
+               "carryFieldsSchema": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "title": "StageFields",
+                    "description": "StageFields",
+                    "type": [
+                         "object",
+                         "null"
+                    ],
+                    "properties": {},
+                    "nullable": true,
+                    "order": 0
+               },
+               "deleted": false,
+               "parent": null
+          },
+          {
+               "id": "2dd52ae2-aa29-46fa-a324-351dda6b27ba",
+               "rank": 1,
+               "name": "进行中",
+               "type": "Edit",
+               "extend": {
+                    "category": "active",
+                    "color": "#6F59F7"
+               },
+               "carryFieldsSchema": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "title": "StageFields",
+                    "description": "StageFields",
+                    "type": [
+                         "object",
+                         "null"
+                    ],
+                    "properties": {},
+                    "nullable": true,
+                    "order": 0
+               },
+               "deleted": false,
+               "parent": null
+          },
+          {
+               "id": "01ddd8fe-da9b-424e-82d3-4899278c63d6",
+               "rank": 2,
+               "name": "已完成",
+               "type": "Edit",
+               "extend": {
+                    "category": "success",
+                    "color": "#4FCDA0"
+               },
+               "carryFieldsSchema": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "title": "StageFields",
+                    "description": "StageFields",
+                    "type": [
+                         "object",
+                         "null"
+                    ],
+                    "properties": {},
+                    "nullable": true,
+                    "order": 0
+               },
+               "deleted": false,
+               "parent": null
+          },
+          {
+               "id": "89a93c03-cd27-4f14-8a77-a86a10130017",
+               "rank": 3,
+               "name": "已关闭",
+               "type": "End&Edit",
+               "extend": {
+                    "category": "fail",
+                    "color": "#459BEA"
+               },
+               "carryFieldsSchema": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "title": "StageFields",
+                    "description": "StageFields",
+                    "type": [
+                         "object",
+                         "null"
+                    ],
+                    "properties": {},
+                    "nullable": true,
+                    "order": 0
+               },
+               "deleted": false,
+               "parent": null
+          }
+     ],
+     "deleted": false,
+     "description": "项目制造专员对应的流程模版",
+     "selfVersion": 1
+}

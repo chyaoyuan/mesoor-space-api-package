@@ -11,3 +11,10 @@ class CreateProject(BaseModel):
     projectName: str
     extraBody: Optional[dict] = Field(default={})
 
+
+class GetProjectCircuit(BaseModel):
+    tenantId: str
+    userId: Optional[str] = Field(default="mesoor-admin")
+    projectId: str
+
+
