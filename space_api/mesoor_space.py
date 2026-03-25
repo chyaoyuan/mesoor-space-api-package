@@ -6,6 +6,8 @@ from space_api.model.channel import CreateChannel
 from space_api.model.flow import FlowFromSpace2Task, FlowFromSpace2Project
 from space_api.model.project import CreateProject, GetProjectCircuit
 from space_api.model.search_task_id_by_projectid_taskpayload_id import SearchTaskIdByProjectIdTaskPayloadId
+from space_api.model.get_tasks_info import GetTasksInfo
+from space_api.model.get_task_info import GetTaskInfo
 from space_api.model.space import CreateSpace
 from loguru import logger
 from aiohttp_client_cache import CachedSession
@@ -379,3 +381,42 @@ class MesoorSpaceApp:
         await self.create_channel({**_data,"extraBody":data.channelData})
         await self.create_project({**_data,"extraBody":data.projectData})
         await self.create_task(_data)
+
+    async def get_tasks_info(self, data: dict):
+        try:
+            data = GetTasksInfo(**data)
+            headers = {
+                "tenant-Id": data.tenantId,
+                "user-Id": data.userId
+            }
+            task_ids_param = ",".join(data.taskIds)
+            url = f"{self.host}/v3/tasks?taskIds={task_ids_param}"
+            session = await self.get_session()
+            res = await session.get(url, headers=headers)
+            
+            if res.status in [200]:
+                logger.info(f"get tasks info success, taskIds->{task_ids_param}")
+                return await res.json() if res.content_type == 'application/json' else await res.text()
+            else:
+                response_text = await res.text()
+                logger.error(f"获取任务信息失败: {response_text}")
+                raise MesoorSpaceException(
+                    message=f"获取任务信息失败: {response_text}",
+                    status_code=res.status,
+                    response_data={"error": response_text}
+                )
+        except aiohttp.ClientError as e:
+            logger.error(f"网络请求失败: {str(e)}")
+            raise MesoorSpaceException(f"网络请求失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"获取任务信息时发生未知错误: {str(e)}")
+            raise MesoorSpaceException(f"获取任务信息时发生未知错误: {str(e)}")
+
+    async def get_task_info(self, data: dict):
+        data = GetTaskInfo(**data)
+        res = await self.get_tasks_info({
+            "tenantId": data.tenantId,
+            "userId": data.userId,
+            "taskIds": [data.taskId]
+        })
+        return res["data"][0]
