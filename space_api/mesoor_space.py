@@ -18,6 +18,7 @@ import hashlib
 from aiohttp_client_cache.backends.sqlite import SQLiteBackend
 
 from space_api.model.update_task_stage import UpDateTaskStage
+from space_api.model.search_entities import SearchEntities
 
 
 class MesoorSpaceApp:
@@ -381,6 +382,52 @@ class MesoorSpaceApp:
         await self.create_channel({**_data,"extraBody":data.channelData})
         await self.create_project({**_data,"extraBody":data.projectData})
         await self.create_task(_data)
+
+
+    async def search_entities(self, data: dict):
+        """
+        通用实体搜索接口（对应 /v3/entities/searches）
+
+        data 示例：
+        {
+            "tenantId": "xxx",
+            "userId": "xxx",
+            "entityType": "Resume",
+            "filters": [...],
+            ...  # 其他搜索参数原样透传
+        }
+        """
+        try:
+            data = SearchEntities(**data)
+
+            headers = {
+                "tenant-Id": data.tenantId,
+                "user-Id": data.userId,
+                "Content-Type": "application/json",
+            }
+
+            if data.authorization:
+                headers["Authorization"] = data.authorization
+
+            body = data.dict(exclude={"tenantId", "userId", "authorization"})
+
+            url = f"{self.host}/v3/entities/searches"
+            session = await self.get_session()
+            res = await session.post(url, json=body, headers=headers)
+
+            if res.status == 200:
+                return await res.json()
+            else:
+                response_text = await res.text()
+                logger.error(f"entities search失败: {response_text}")
+                raise MesoorSpaceException(
+                    message=f"entities search失败: {response_text}",
+                    status_code=res.status,
+                    response_data={"error": response_text}
+                )
+        except aiohttp.ClientError as e:
+            logger.error(f"网络请求失败: {str(e)}")
+            raise MesoorSpaceException(f"网络请求失败: {str(e)}")
 
     async def get_tasks_info(self, data: dict):
         try:
